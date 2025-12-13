@@ -26,7 +26,7 @@ use tor_netdir::{DirEvent, NetDir, NetDirProvider, Timeliness};
 use tor_persist::{DynStorageHandle, StateMgr};
 use tor_relay_selection::RelaySelector;
 use tor_rtcompat::Runtime;
-use tracing::{debug, info, instrument};
+use tracing::{debug, info};
 
 use crate::{RetireCircuits, VanguardMode};
 
@@ -173,7 +173,6 @@ impl<R: Runtime> VanguardMgr<R> {
     /// These run until the `VanguardMgr` is dropped.
     //
     // This spawns [`VanguardMgr::maintain_vanguard_sets`].
-    #[instrument(level = "trace", skip_all)]
     pub fn launch_background_tasks(
         self: &Arc<Self>,
         netdir_provider: &Arc<dyn NetDirProvider>,

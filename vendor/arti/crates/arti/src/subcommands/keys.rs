@@ -33,7 +33,6 @@ pub(crate) enum KeysSubcommands {
     Keys(KeysSubcommand),
 }
 
-/// The `keys` subcommand.
 #[derive(Subcommand, Debug, Clone)]
 pub(crate) enum KeysSubcommand {
     /// List keys and certificates.

@@ -15,9 +15,9 @@
 //!
 //!  * Create a TLS connection as an object that implements AsyncRead +
 //!    AsyncWrite + StreamOps, and pass it to a [ChannelBuilder].  This will
-//!    yield an [crate::client::channel::handshake::ClientInitiatorHandshake] that represents
+//!    yield an [handshake::ClientInitiatorHandshake] that represents
 //!    the state of the handshake.
-//!  * Call [crate::client::channel::handshake::ClientInitiatorHandshake::connect] on the result
+//!  * Call [handshake::ClientInitiatorHandshake::connect] on the result
 //!    to negotiate the rest of the handshake.  This will verify
 //!    syntactic correctness of the handshake, but not its cryptographic
 //!    integrity.
@@ -61,10 +61,8 @@ mod reactor;
 mod unique_id;
 
 pub use crate::channel::params::*;
-pub(crate) use crate::channel::reactor::Reactor;
-use crate::channel::reactor::{BoxedChannelSink, BoxedChannelStream};
+use crate::channel::reactor::{BoxedChannelSink, BoxedChannelStream, Reactor};
 pub use crate::channel::unique_id::UniqId;
-use crate::client::channel::ClientChannelBuilder;
 use crate::client::circuit::padding::{PaddingController, QueuedCellPaddingInfo};
 use crate::client::circuit::{PendingClientTunnel, TimeoutEstimator};
 use crate::memquota::{ChannelAccount, CircuitAccount, SpecificAccount as _};
@@ -117,13 +115,13 @@ use std::result::Result as StdResult;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use tracing::{instrument, trace};
+use tracing::trace;
 
 // reexport
-pub use super::client::channel::handshake::ClientInitiatorHandshake;
 #[cfg(feature = "relay")]
 pub use super::relay::channel::handshake::RelayInitiatorHandshake;
 use crate::channel::unique_id::CircUniqIdContext;
+pub use handshake::ClientInitiatorHandshake;
 
 use kist::KistParams;
 
@@ -176,6 +174,13 @@ pub enum ChannelType {
         /// meaning a relay.
         authenticated: bool,
     },
+}
+
+impl ChannelType {
+    /// Return true if this channel type is an initiator.
+    pub(crate) fn is_initiator(&self) -> bool {
+        matches!(self, Self::ClientInitiator | Self::RelayInitiator)
+    }
 }
 
 /// A channel cell frame used for sending and receiving cells on a channel. The handler takes care
@@ -259,7 +264,7 @@ pub struct Channel {
     /// created.
     clock_skew: ClockSkew,
     /// The time when this channel was successfully completed
-    opened_at: coarsetime::Instant,
+    opened_at: crate::util::wasm_time::Instant,
     /// Mutable state used by the `Channel.
     mutable: Mutex<MutableDetails>,
 
@@ -484,8 +489,6 @@ impl Sink<ChanCellQueueEntry> for ChannelSender {
 }
 
 /// Structure for building and launching a Tor channel.
-//
-// TODO(relay): Remove this as we now have ClientChannelBuilder and soon RelayChannelBuilder.
 #[derive(Default)]
 pub struct ChannelBuilder {
     /// If present, a description of the address we're trying to connect to,
@@ -535,13 +538,7 @@ impl ChannelBuilder {
         T: AsyncRead + AsyncWrite + StreamOps + Send + Unpin + 'static,
         S: CoarseTimeProvider + SleepProvider,
     {
-        // TODO(relay): We could just make the target be taken as a parameter instead of using a
-        // setter that is also replicated on the client builder? Food for thought on refactor here.
-        let mut builder = ClientChannelBuilder::new();
-        if let Some(target) = self.target {
-            builder.set_declared_method(target);
-        }
-        builder.launch(tls, sleep_prov, memquota)
+        handshake::ClientInitiatorHandshake::new(tls, self.target, sleep_prov, memquota)
     }
 }
 
@@ -608,7 +605,7 @@ impl Channel {
             unique_id,
             peer_id,
             clock_skew,
-            opened_at: coarsetime::Instant::now(),
+            opened_at: crate::util::wasm_time::Instant::now(),
             mutable: Mutex::new(mutable),
             details: Arc::clone(&details),
         });
@@ -688,7 +685,6 @@ impl Channel {
     }
 
     /// Send a control message
-    #[instrument(level = "trace", skip_all)]
     fn send_control(&self, msg: CtrlMsg) -> StdResult<(), ChannelClosed> {
         self.control
             .unbounded_send(msg)
@@ -714,7 +710,6 @@ impl Channel {
     /// Idempotent.
     ///
     /// There is no way to undo the effect of this call.
-    #[instrument(level = "trace", skip_all)]
     pub fn engage_padding_activities(&self) {
         let mut mutable = self.mutable();
 
@@ -752,7 +747,6 @@ impl Channel {
     /// Reparameterise (update parameters; reconfigure)
     ///
     /// Returns `Err` if the channel was closed earlier
-    #[instrument(level = "trace", skip_all)]
     pub fn reparameterize(&self, params: Arc<ChannelPaddingInstructionsUpdates>) -> Result<()> {
         let mut mutable = self
             .mutable
@@ -775,7 +769,6 @@ impl Channel {
     /// Update the KIST parameters.
     ///
     /// Returns `Err` if the channel is closed.
-    #[instrument(level = "trace", skip_all)]
     pub fn reparameterize_kist(&self, kist_params: KistParams) -> Result<()> {
         Ok(self.send_control(CtrlMsg::KistConfigUpdate(kist_params))?)
     }
@@ -819,7 +812,6 @@ impl Channel {
     /// To use the results of this method, call Reactor::run() in a
     /// new task, then use the methods of
     /// [crate::client::circuit::PendingClientTunnel] to build the circuit.
-    #[instrument(level = "trace", skip_all)]
     pub async fn new_tunnel(
         self: &Arc<Self>,
         timeouts: Arc<dyn TimeoutEstimator>,
@@ -870,13 +862,11 @@ impl Channel {
     /// It's not necessary to call this method if you're just done
     /// with a channel: the channel should close on its own once nothing
     /// is using it any more.
-    #[instrument(level = "trace", skip_all)]
     pub fn terminate(&self) {
         let _ = self.send_control(CtrlMsg::Shutdown);
     }
 
     /// Tell the reactor that the circuit with the given ID has gone away.
-    #[instrument(level = "trace", skip_all)]
     pub fn close_circuit(&self, circid: CircId) -> Result<()> {
         self.send_control(CtrlMsg::CloseCircuit(circid))?;
         Ok(())
@@ -968,7 +958,7 @@ impl Channel {
             unique_id,
             peer_id,
             clock_skew: ClockSkew::None,
-            opened_at: coarsetime::Instant::now(),
+            opened_at: crate::util::wasm_time::Instant::now(),
             mutable: Default::default(),
             details,
         };
@@ -1095,7 +1085,7 @@ pub(crate) mod test {
             unique_id,
             peer_id,
             clock_skew: ClockSkew::None,
-            opened_at: coarsetime::Instant::now(),
+            opened_at: crate::util::wasm_time::Instant::now(),
             mutable: Default::default(),
             details: fake_channel_details(),
         }

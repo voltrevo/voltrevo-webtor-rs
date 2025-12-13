@@ -10,7 +10,7 @@ use futures::{select_biased, FutureExt as _, Stream};
 use tor_config::file_watcher::{self, FileWatcherBuilder, FileEventSender, FileWatcher};
 use tor_config::{sources::FoundConfigFiles, ConfigurationSource, ConfigurationSources};
 use tor_rtcompat::Runtime;
-use tracing::{debug, error, info, instrument, warn};
+use tracing::{debug, error, info, warn};
 use tor_rtcompat::SpawnExt;
 use futures::StreamExt;
 
@@ -55,7 +55,6 @@ pub(crate) trait ReconfigurableModule: Send + Sync {
 ///
 /// See the [`FileWatcher`](FileWatcher#Limitations) docs for limitations.
 #[cfg_attr(feature = "experimental-api", visibility::make(pub))]
-#[instrument(level = "trace", skip_all)]
 pub(crate) fn watch_for_config_changes<R: Runtime>(
     runtime: &R,
     sources: ConfigurationSources,
@@ -97,7 +96,6 @@ pub(crate) fn watch_for_config_changes<R: Runtime>(
 ///
 /// Spawned from `watch_for_config_changes`.
 #[allow(clippy::cognitive_complexity)] // TODO: Refactor? Partly due to tracing.
-#[instrument(level = "trace", skip_all)]
 async fn run_watcher<R: Runtime>(
     runtime: R,
     sources: ConfigurationSources,
@@ -164,7 +162,6 @@ async fn run_watcher<R: Runtime>(
 
 /// Reload the configuration.
 #[allow(clippy::cognitive_complexity)] // TODO: Refactor? Partly due to tracing.
-#[instrument(level = "trace", skip_all)]
 async fn reload_configuration<R: Runtime>(
     runtime: R,
     mut watcher: Option<FileWatcher>,
@@ -214,7 +211,6 @@ async fn reload_configuration<R: Runtime>(
 }
 
 impl<R: Runtime> ReconfigurableModule for TorClient<R> {
-    #[instrument(level = "trace", skip_all)]
     fn reconfigure(&self, new: &ArtiCombinedConfig) -> anyhow::Result<()> {
         TorClient::reconfigure(self, &new.1, Reconfigure::WarnOnFailures)?;
         Ok(())
@@ -244,7 +240,6 @@ impl ReconfigurableModule for Application {
     // TODO: This should probably take "how: Reconfigure" as an argument, and
     // pass it down as appropriate. See issue #1156.
     #[allow(clippy::cognitive_complexity)]
-    #[instrument(level = "trace", skip_all)]
     fn reconfigure(&self, new: &ArtiCombinedConfig) -> anyhow::Result<()> {
         let original = &self.original_config;
         let config = &new.0;
@@ -296,7 +291,6 @@ fn prepare<'a, R: Runtime>(
 //
 // TODO: This should probably take "how: Reconfigure" as an argument, and
 // pass it down as appropriate. See issue #1156.
-#[instrument(level = "trace", skip_all)]
 fn reconfigure(
     found_files: FoundConfigFiles<'_>,
     reconfigurable: &[Weak<dyn ReconfigurableModule>],

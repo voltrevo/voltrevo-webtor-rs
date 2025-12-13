@@ -3,7 +3,6 @@ use super::TorPath;
 use crate::Result;
 use tor_guardmgr::{GuardMgr, GuardMonitor, GuardUsable};
 use tor_rtcompat::Runtime;
-use tracing::instrument;
 
 /// A PathBuilder that can connect to a directory.
 #[non_exhaustive]
@@ -23,7 +22,6 @@ impl DirPathBuilder {
 
     /// Try to create and return a path corresponding to the requirements of
     /// this builder.
-    #[instrument(skip_all, level = "trace")]
     pub(crate) fn pick_path<'a, RT: Runtime>(
         &self,
         guards: &GuardMgr<RT>,

@@ -18,10 +18,7 @@ pub use timeimpl::*;
 #[cfg(feature = "parse2")]
 use {
     crate::parse2::multiplicity::{
-        ItemSetMethods,
-        // `P2` for "parse2`; different from `encode::MultiplicitySelector`
-        MultiplicitySelector as P2MultiplicitySelector,
-        ObjectSetMethods,
+        ItemSetMethods, ItemSetSelector, ObjectSetMethods, ObjectSetSelector,
     },
     crate::parse2::{ArgumentError, ArgumentStream, ItemArgumentParseable, ItemObjectParseable}, //
 };
@@ -302,7 +299,7 @@ mod ignored_impl {
     pub struct Ignored;
 
     #[cfg(feature = "parse2")]
-    impl ItemSetMethods for P2MultiplicitySelector<NotPresent> {
+    impl ItemSetMethods for ItemSetSelector<NotPresent> {
         type Each = Ignored;
         type Field = NotPresent;
         fn can_accumulate(self, _acc: &Option<NotPresent>) -> Result<(), EP> {
@@ -324,7 +321,7 @@ mod ignored_impl {
     }
 
     #[cfg(feature = "parse2")]
-    impl ObjectSetMethods for P2MultiplicitySelector<NotPresent> {
+    impl ObjectSetMethods for ObjectSetSelector<NotPresent> {
         type Field = NotPresent;
         type Each = Void;
         fn resolve_option(self, _found: Option<Void>) -> Result<NotPresent, EP> {
@@ -358,7 +355,7 @@ mod ignored_impl {
     }
 
     #[cfg(feature = "parse2")]
-    impl ObjectSetMethods for P2MultiplicitySelector<Ignored> {
+    impl ObjectSetMethods for ObjectSetSelector<Ignored> {
         type Field = Ignored;
         type Each = Ignored;
         fn resolve_option(self, _found: Option<Ignored>) -> Result<Ignored, EP> {

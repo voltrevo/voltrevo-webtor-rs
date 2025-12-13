@@ -11,33 +11,46 @@
 //! trait impls for `Vec<T: ItemValueParseable>`, `Option<T>` etc.
 //! as well as simply unadorned `T`.
 //!
-//! We implement traits on a helper type `struct `[`MultiplicitySelector<Field>`].
+//! For Items we have `struct `[`ItemSetSelector<Field>`] and `trait `[`ItemSetMethods`].
 //!
-//! For Items we have `trait `[`ItemSetMethods`].
-//!
-//! `ItemSetMethods` is implemented for `MultiplicitySelector<Field>`
+//! `ItemSetMethods` is implemented for `ItemSetSelector<Field>`
 //! for each supported `Field`.
-//! So, for `MultiplicitySelector<T>`, `MultiplicitySelector<Option<T>>`, and `MultiplicitySelector<Vec<T>>`.
-//! *But*, for just `T`, the impl is on `&MultiplicitySelector<T>`.
+//! So, for `ItemSetSelector<T>`, `ItemSetSelector<Option<T>>`, and `ItemSetSelector<Vec<T>>`.
+//! *But*, for just `T`, the impl is on `&ItemSetSelector<T>`.
 //!
-//! When methods on `MultiplicitySelector` are called, the compiler finds
-//! the specific implementation for `MultiplicitySelector<Option<_>>` or `..Vec<_>`,
-//! or, failing that, derefs and finds the blanket impl on `&MultiplicitySelector<T>`.
+//! When methods on `ItemSetSelector` are called, the compiler finds
+//! the specific implementation for `ItemSetSelector<Option<_>>` or `..Vec<_>`,
+//! or, failing that, derefs and finds the blanket impl on `&ItemSetSelector<T>`.
 //!
-//! For Arguments we have [`ArgumentSetMethods`],
-//! and for Objects, [`ObjectSetMethods`],
+//! For Arguments we have [`ArgumentSetSelector`] and [`ArgumentSetMethods`],
 //! which work similarly.
 
 use super::*;
 
-/// Helper type that allows us to select an impl of `ItemSetMethods` etc.
+/// Helper type that allows us to select an impl of `ItemSetMethods`
 ///
 /// **For use by macros**.
 ///
-/// See the [module-level docs](multiplicity).
+/// See the [module-level docs](multiplicity), and
+/// [Field type in `NetdocParseable`](derive_deftly_template_NetdocParseable#field-type).
+///
+/// # Example
+///
+/// The code in the (derive) macro output is roughly like this:
+///
+/// ```
+/// use tor_netdoc::parse2::multiplicity::{ItemSetSelector, ItemSetMethods as _};
+///
+/// let selector = ItemSetSelector::<Vec<i32>>::default();
+/// let mut accum = None;
+/// selector.accumulate(&mut accum, 12).unwrap();
+/// let out = selector.finish(accum, "item-set").unwrap();
+///
+/// assert_eq!(out, [12]);
+/// ```
 #[derive(Educe)]
 #[educe(Clone, Copy, Default)]
-pub struct MultiplicitySelector<Field>(PhantomData<fn() -> Field>);
+pub struct ItemSetSelector<Field>(PhantomData<fn() -> Field>);
 
 /// Methods for handling some multiplicity of Items
 ///
@@ -48,23 +61,7 @@ pub struct MultiplicitySelector<Field>(PhantomData<fn() -> Field>);
 /// using a type which is generic over the field type in a simple way
 /// allows the partially-parsed accumulation state for a whole netdoc to have a concrete type.
 ///
-/// See the [module-level docs](multiplicity), and
-/// [Field type in `NetdocParseable`](derive_deftly_template_NetdocParseable#field-type).
-///
-/// # Example
-///
-/// The code in the (derive) macro output is roughly like this:
-///
-/// ```
-/// use tor_netdoc::parse2::multiplicity::{MultiplicitySelector, ItemSetMethods as _};
-///
-/// let selector = MultiplicitySelector::<Vec<i32>>::default();
-/// let mut accum = None;
-/// selector.accumulate(&mut accum, 12).unwrap();
-/// let out = selector.finish(accum, "item-set").unwrap();
-///
-/// assert_eq!(out, [12]);
-/// ```
+/// See [`ItemSetSelector`] and the [module-level docs](multiplicity).
 pub trait ItemSetMethods: Copy + Sized {
     /// The value for each Item.
     type Each: Sized;
@@ -133,7 +130,7 @@ pub trait ItemSetMethods: Copy + Sized {
     {
     }
 }
-impl<T> ItemSetMethods for MultiplicitySelector<Vec<T>> {
+impl<T> ItemSetMethods for ItemSetSelector<Vec<T>> {
     type Each = T;
     type Field = Vec<T>;
     // We always have None, or Some(nonempty)
@@ -148,7 +145,7 @@ impl<T> ItemSetMethods for MultiplicitySelector<Vec<T>> {
         Ok(acc.unwrap_or_default())
     }
 }
-impl<T: Ord> ItemSetMethods for MultiplicitySelector<BTreeSet<T>> {
+impl<T: Ord> ItemSetMethods for ItemSetSelector<BTreeSet<T>> {
     type Each = T;
     type Field = BTreeSet<T>;
     // We always have None, or Some(nonempty)
@@ -165,7 +162,7 @@ impl<T: Ord> ItemSetMethods for MultiplicitySelector<BTreeSet<T>> {
         Ok(acc.unwrap_or_default())
     }
 }
-impl<T> ItemSetMethods for MultiplicitySelector<Option<T>> {
+impl<T> ItemSetMethods for ItemSetSelector<Option<T>> {
     type Each = T;
     type Field = Option<T>;
     // We always have None, or Some(Some(_))
@@ -185,7 +182,7 @@ impl<T> ItemSetMethods for MultiplicitySelector<Option<T>> {
         Ok(acc.flatten())
     }
 }
-impl<T> ItemSetMethods for &'_ MultiplicitySelector<T> {
+impl<T> ItemSetMethods for &'_ ItemSetSelector<T> {
     type Each = T;
     type Field = T;
     fn can_accumulate(self, acc: &Option<T>) -> Result<(), EP> {
@@ -204,7 +201,7 @@ impl<T> ItemSetMethods for &'_ MultiplicitySelector<T> {
     }
 }
 
-/// Method for handling some multiplicity of Arguments
+/// Helper type that allows us to select an impl of `ArgumentSetMethods`
 ///
 /// **For use by macros**.
 ///
@@ -216,18 +213,27 @@ impl<T> ItemSetMethods for &'_ MultiplicitySelector<T> {
 /// The code in the (derive) macro output is roughly like this:
 ///
 /// ```
-/// use tor_netdoc::parse2::multiplicity::{MultiplicitySelector, ArgumentSetMethods as _};
+/// use tor_netdoc::parse2::multiplicity::{ArgumentSetSelector, ArgumentSetMethods as _};
 /// use tor_netdoc::parse2::{ItemArgumentParseable, ItemStream, ParseInput};
 /// let doc = "intro-item 12 66\n";
 /// let input = ParseInput::new(doc, "<literal>");
 /// let mut items = ItemStream::new(&input).unwrap();
 /// let mut item = items.next().unwrap().unwrap();
 ///
-/// let args = MultiplicitySelector::<Vec<i32>>::default()
+/// let args = ArgumentSetSelector::<Vec<i32>>::default()
 ///     .parse_with(item.args_mut(), ItemArgumentParseable::from_args)
 ///     .unwrap();
 /// assert_eq!(args, [12, 66]);
 /// ```
+#[derive(Educe)]
+#[educe(Clone, Copy, Default)]
+pub struct ArgumentSetSelector<Field>(PhantomData<fn() -> Field>);
+
+/// Method for handling some multiplicity of Arguments
+///
+/// **For use by macros**.
+///
+/// See [`ArgumentSetSelector`] and the [module-level docs](multiplicity).
 pub trait ArgumentSetMethods: Copy + Sized {
     /// The value for each Item.
     type Each: Sized;
@@ -253,7 +259,7 @@ pub trait ArgumentSetMethods: Copy + Sized {
     {
     }
 }
-impl<T> ArgumentSetMethods for MultiplicitySelector<Vec<T>> {
+impl<T> ArgumentSetMethods for ArgumentSetSelector<Vec<T>> {
     type Each = T;
     type Field = Vec<T>;
     fn parse_with<P>(self, args: &mut ArgumentStream<'_>, parser: P) -> Result<Self::Field, AE>
@@ -267,7 +273,7 @@ impl<T> ArgumentSetMethods for MultiplicitySelector<Vec<T>> {
         Ok(acc)
     }
 }
-impl<T: Ord> ArgumentSetMethods for MultiplicitySelector<BTreeSet<T>> {
+impl<T: Ord> ArgumentSetMethods for ArgumentSetSelector<BTreeSet<T>> {
     type Each = T;
     type Field = BTreeSet<T>;
     fn parse_with<P>(self, args: &mut ArgumentStream<'_>, parser: P) -> Result<Self::Field, AE>
@@ -283,7 +289,7 @@ impl<T: Ord> ArgumentSetMethods for MultiplicitySelector<BTreeSet<T>> {
         Ok(acc)
     }
 }
-impl<T> ArgumentSetMethods for MultiplicitySelector<Option<T>> {
+impl<T> ArgumentSetMethods for ArgumentSetSelector<Option<T>> {
     type Each = T;
     type Field = Option<T>;
     fn parse_with<P>(self, args: &mut ArgumentStream<'_>, parser: P) -> Result<Self::Field, AE>
@@ -296,7 +302,7 @@ impl<T> ArgumentSetMethods for MultiplicitySelector<Option<T>> {
         Ok(Some(parser(args)?))
     }
 }
-impl<T> ArgumentSetMethods for &MultiplicitySelector<T> {
+impl<T> ArgumentSetMethods for &ArgumentSetSelector<T> {
     type Each = T;
     type Field = T;
     fn parse_with<P>(self, args: &mut ArgumentStream<'_>, parser: P) -> Result<Self::Field, AE>
@@ -307,7 +313,7 @@ impl<T> ArgumentSetMethods for &MultiplicitySelector<T> {
     }
 }
 
-/// Method for handling some multiplicity of Objects
+/// Helper type that allows us to select an impl of `ObjectSetMethods`
 ///
 /// **For use by macros**.
 ///
@@ -319,14 +325,14 @@ impl<T> ArgumentSetMethods for &MultiplicitySelector<T> {
 /// The code in the (derive) macro output is roughly like this:
 ///
 /// ```
-/// use tor_netdoc::parse2::multiplicity::{MultiplicitySelector, ObjectSetMethods as _};
+/// use tor_netdoc::parse2::multiplicity::{ObjectSetSelector, ObjectSetMethods as _};
 /// use tor_netdoc::parse2::{ItemStream, ParseInput};
 /// let doc = "intro-item\n-----BEGIN OBJECT-----\naGVsbG8=\n-----END OBJECT-----\n";
 /// let input = ParseInput::new(doc, "<literal>");
 /// let mut items = ItemStream::new(&input).unwrap();
 /// let mut item = items.next().unwrap().unwrap();
 ///
-/// let selector = MultiplicitySelector::<Option<String>>::default();
+/// let selector = ObjectSetSelector::<Option<String>>::default();
 /// let obj = item.object().map(|obj| {
 ///     let data = obj.decode_data().unwrap();
 ///     String::from_utf8(data)
@@ -334,6 +340,15 @@ impl<T> ArgumentSetMethods for &MultiplicitySelector<T> {
 /// let obj = selector.resolve_option(obj).unwrap();
 /// assert_eq!(obj, Some("hello".to_owned()));
 /// ```
+#[derive(Educe)]
+#[educe(Clone, Copy, Default)]
+pub struct ObjectSetSelector<Field>(PhantomData<fn() -> Field>);
+
+/// Method for handling some multiplicity of Objects
+///
+/// **For use by macros**.
+///
+/// See [`ObjectSetSelector`] and the [module-level docs](multiplicity).
 pub trait ObjectSetMethods: Copy + Sized {
     /// The value for each Item.
     type Each: Sized;
@@ -359,14 +374,14 @@ pub trait ObjectSetMethods: Copy + Sized {
     {
     }
 }
-impl<T> ObjectSetMethods for MultiplicitySelector<Option<T>> {
+impl<T> ObjectSetMethods for ObjectSetSelector<Option<T>> {
     type Field = Option<T>;
     type Each = T;
     fn resolve_option(self, found: Option<Self::Each>) -> Result<Self::Field, EP> {
         Ok(found)
     }
 }
-impl<T> ObjectSetMethods for &MultiplicitySelector<T> {
+impl<T> ObjectSetMethods for &ObjectSetSelector<T> {
     type Field = T;
     type Each = T;
     fn resolve_option(self, found: Option<Self::Each>) -> Result<Self::Field, EP> {

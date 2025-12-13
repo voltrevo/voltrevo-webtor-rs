@@ -22,7 +22,6 @@ mod net {
     use std::task::{Context, Poll};
     #[cfg(unix)]
     use tor_general_addr::unix;
-    use tracing::instrument;
 
     /// Implement NetStreamProvider-related functionality for a single address type.
     macro_rules! impl_stream {
@@ -113,7 +112,6 @@ mod net {
     impl traits::NetStreamProvider<std::net::SocketAddr> for async_executors::AsyncStd {
         type Stream = TcpStream;
         type Listener = TcpListener;
-        #[instrument(skip_all, level = "trace")]
         async fn connect(&self, addr: &SocketAddr) -> IoResult<Self::Stream> {
             TcpStream::connect(addr).await
         }
@@ -128,7 +126,6 @@ mod net {
     impl traits::NetStreamProvider<unix::SocketAddr> for async_executors::AsyncStd {
         type Stream = UnixStream;
         type Listener = UnixListener;
-        #[instrument(skip_all, level = "trace")]
         async fn connect(&self, addr: &unix::SocketAddr) -> IoResult<Self::Stream> {
             let path = addr
                 .as_pathname()

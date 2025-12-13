@@ -7,8 +7,7 @@ Make sure to familiarize yourself with our
 [Code of Conduct](https://community.torproject.org/policies/code_of_conduct/).
 
 The new-account process on our gitlab instance is moderated, to reduce
-spam and abuse. You can [report bugs anonymously](https://anonticket.torproject.org/)
-without creating an account.
+spam and abuse.  (*Insert instructions for anonymous usage here*)
 
 ## Licensing notice
 
@@ -119,8 +118,8 @@ link to your forked arti repository at:
 > *Note*: to fork this repository, or contribute to Issues and Merge Requests,
 > you will need an account on our gitlab server.  If you don't have an
 > account there, you can either
-> [request an account](https://anonticket.torproject.org/user/gitlab-account/create/) or
-> [report a bug anonymously](https://anonticket.torproject.org/).
+> [request an account](https://gitlab.onionize.space/) or
+> [report a bug anonymously](https://anonticket.onionize.space/).
 >
 > Check the
 > [Sign In](https://gitlab.torproject.org/users/sign_in?redirect_to_referer=yes)

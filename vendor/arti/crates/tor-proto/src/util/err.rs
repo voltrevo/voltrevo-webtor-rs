@@ -382,7 +382,6 @@ pub(crate) enum ConfluxHandshakeError {
     ChannelClosed,
 }
 
-/// An error returned when we receive excessive or unexpected padding.
 #[derive(Debug, Clone, Error)]
 #[non_exhaustive]
 pub enum ExcessPadding {

@@ -183,8 +183,6 @@ decl_extension_group! {
     }
 }
 
-/// Helper for generating encoding and decoding functions
-/// for [`CircRequestExt`] and [`CircResponseExt`].
 macro_rules! impl_encode_decode {
     ($extgroup:ty, $name:expr) => {
         impl $extgroup {

@@ -22,7 +22,6 @@ use tor_proto::{CellCount, ClientTunnel, FlowCtrlParameters};
 use tor_rtcompat::SpawnExt;
 use tor_rtcompat::{Runtime, SleepProviderExt};
 use tor_units::Percentage;
-use tracing::instrument;
 
 #[cfg(all(feature = "vanguards", feature = "hs-common"))]
 use tor_guardmgr::vanguards::VanguardMgr;
@@ -90,7 +89,6 @@ pub(crate) trait Buildable: Sized {
 ///
 /// This is common code, shared by all the first-hop functions in the
 /// implementation of `Buildable` for `ClientTunnel`.
-#[instrument(level = "trace", skip_all)]
 async fn create_common<RT: Runtime>(
     chan: Arc<tor_proto::channel::Channel>,
     timeouts: Arc<dyn tor_proto::client::circuit::TimeoutEstimator>,
@@ -107,8 +105,6 @@ async fn create_common<RT: Runtime>(
                 unique_id: None,
             })?;
 
-    tracing::info!("Spawning reactor...");
-
     rt.spawn(async {
         let _ = reactor.run().await;
     })
@@ -121,7 +117,6 @@ async fn create_common<RT: Runtime>(
 impl Buildable for ClientTunnel {
     type Chan = tor_proto::channel::Channel;
 
-    #[instrument(level = "trace", skip_all)]
     async fn open_channel<RT: Runtime>(
         chanmgr: &ChanMgr<RT>,
         target: &OwnedChanTarget,
@@ -153,7 +148,6 @@ impl Buildable for ClientTunnel {
         }
     }
 
-    #[instrument(level = "trace", skip_all)]
     async fn create_chantarget<RT: Runtime>(
         chan: Arc<Self::Chan>,
         rt: &RT,
@@ -173,7 +167,6 @@ impl Buildable for ClientTunnel {
                 unique_id,
             })
     }
-    #[instrument(level = "trace", skip_all)]
     async fn create<RT: Runtime>(
         chan: Arc<Self::Chan>,
         rt: &RT,
@@ -258,7 +251,6 @@ impl<R: Runtime, C: Buildable + Sync + Send + 'static> Builder<R, C> {
     ///
     /// (TODO: Find
     /// a better design there.)
-    #[instrument(level = "trace", skip_all)]
     async fn build_notimeout(
         self: Arc<Self>,
         path: OwnedPath,
@@ -309,7 +301,6 @@ impl<R: Runtime, C: Buildable + Sync + Send + 'static> Builder<R, C> {
     }
 
     /// Build a circuit from an [`OwnedPath`].
-    #[instrument(level = "trace", skip_all)]
     async fn build_owned(
         self: &Arc<Self>,
         path: OwnedPath,
@@ -455,7 +446,6 @@ impl<R: Runtime> TunnelBuilder<R> {
     }
 
     /// Reload persistent state from disk, if we don't have storage permission.
-    #[instrument(level = "trace", skip_all)]
     pub(crate) fn reload_state(&self) -> Result<()> {
         if !self.storage.can_store() {
             self.builder
@@ -474,7 +464,6 @@ impl<R: Runtime> TunnelBuilder<R> {
     }
 
     /// Like `build`, but construct a new circuit from an [`OwnedPath`].
-    #[instrument(level = "trace", skip_all)]
     pub(crate) async fn build_owned(
         &self,
         path: OwnedPath,
@@ -493,7 +482,6 @@ impl<R: Runtime> TunnelBuilder<R> {
     /// This circuit is _not_ automatically registered with any
     /// circuit manager; if you don't hang on it it, it will
     /// automatically go away when the last reference is dropped.
-    #[instrument(level = "trace", skip_all)]
     pub async fn build(
         &self,
         path: &TorPath<'_>,

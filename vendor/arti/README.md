@@ -208,9 +208,10 @@ get our project manager to sign off on them.
 ## <a name="reporting-bugs"></a> How can I report bugs?
 
 When you find bugs, please report them
-[on our bugtracker](https://gitlab.torproject.org/tpo/core/arti/). 
-
-If you don't already have an account there, you can [report a bug anonymously](https://anonticket.torproject.org/) or you can [request an account](https://anonticket.torproject.org/user/gitlab-account/create/).
+[on our bugtracker](https://gitlab.torproject.org/tpo/core/arti/). If you
+don't already have an account there, you can either
+[request an account](https://gitlab.onionize.space/) or
+[report a bug anonymously](https://anonticket.torproject.org/).
 
 ## How can I help out?
 

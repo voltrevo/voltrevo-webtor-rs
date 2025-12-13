@@ -538,11 +538,7 @@ impl Store for SqliteStore {
         }
     }
     fn upgrade_to_readwrite(&mut self) -> Result<bool> {
-        let Some(sql_path) = self.sql_path.as_ref() else {
-            return Ok(true);
-        };
-
-        if self.is_readonly() {
+        if self.is_readonly() && self.sql_path.is_some() {
             let lf = self
                 .lockfile
                 .as_mut()
@@ -551,7 +547,9 @@ impl Store for SqliteStore {
                 // Somebody else has the lock.
                 return Ok(false);
             }
-            match rusqlite::Connection::open(sql_path) {
+            // Unwrap should be safe due to parent `.is_some()` check
+            #[allow(clippy::unwrap_used)]
+            match rusqlite::Connection::open(self.sql_path.as_ref().unwrap()) {
                 Ok(conn) => {
                     self.conn = conn;
                 }

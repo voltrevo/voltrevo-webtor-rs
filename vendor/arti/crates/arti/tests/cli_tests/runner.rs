@@ -33,15 +33,8 @@ fn cli_tests() {
 
     cfg_if::cfg_if! {
         if #[cfg(feature = "hsc")] {
-            cfg_if::cfg_if! {
-                if #[cfg(feature = "onion-service-cli-extra")] {
-                    t.case("tests/testcases/hsc-extra/*.toml");
-                } else {
-                    t.case("tests/testcases/hsc/*.toml");
-                }
-            }
-            t.case("tests/testcases/hsc-common/*.toml");
-            t.case("tests/testcases/hsc-common/*.md");
+            t.case("tests/testcases/hsc/*.toml");
+            t.case("tests/testcases/hsc/*.md");
         } else {
             // This is not yet implemented, see #1487
             t.skip("tests/testcases/hsc-feature-missing/*.toml");

@@ -7,7 +7,6 @@ use std::net;
 use std::task::Poll;
 use std::{pin::Pin, task::Context};
 use tor_general_addr::unix;
-use tracing::instrument;
 
 use crate::{NetStreamListener, NetStreamProvider, StreamOps};
 use tor_general_addr::general;
@@ -121,7 +120,6 @@ where
     type Stream = Stream;
     type Listener = Listener;
 
-    #[instrument(skip_all, level = "trace")]
     async fn connect(&self, addr: &general::SocketAddr) -> IoResult<Stream> {
         use general::SocketAddr as G;
         match addr {

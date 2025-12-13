@@ -32,15 +32,15 @@ use super::*;
 ns_choose! { (
     use doc_digest_parse2_real as doc_digest_parse2_r; // implemented here in rs/each_variety.rs
     use Ignored as doc_digest_parse2_m;
-    use relay_flags::ConsensusRepr as VarietyRelayFlagsRepr;
+    use ConsensusRelayFlagsParser as VarietyRelayFlagsParser;
 ) (
     use NotPresent as doc_digest_parse2_r;
     use doc_digest_parse2_real_item as doc_digest_parse2_m; // implemented in rs/md.rs
-    use relay_flags::ConsensusRepr as VarietyRelayFlagsRepr;
+    use ConsensusRelayFlagsParser as VarietyRelayFlagsParser;
 ) (
     use doc_digest_parse2_real as doc_digest_parse2_r; // implemented here in rs/each_variety.rs
     use RouterStatusMdDigestsVote as doc_digest_parse2_m;
-    use relay_flags::VoteRepr as VarietyRelayFlagsRepr;
+    use VoteRelayFlagsParser as VarietyRelayFlagsParser;
 ) }
 
 /// Intro item for a router status entry
@@ -126,7 +126,7 @@ pub struct RouterStatus {
     #[cfg_attr(
         feature = "parse2",
         deftly(netdoc(keyword = "s")),
-        deftly(netdoc(with = "relay_flags::Parser::<VarietyRelayFlagsRepr>")),
+        deftly(netdoc(with = "VarietyRelayFlagsParser")),
     )]
     pub flags: DocRelayFlags,
 

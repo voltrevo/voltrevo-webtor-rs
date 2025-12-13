@@ -34,7 +34,6 @@ use tor_rtcompat::Runtime;
 
 #[cfg(all(feature = "vanguards", feature = "hs-common"))]
 use tor_guardmgr::vanguards::Vanguard;
-use tracing::instrument;
 
 use crate::usage::ExitPolicy;
 use crate::{DirInfo, Error, PathConfig, Result};
@@ -301,7 +300,6 @@ trait AnonymousPathBuilder {
 
 /// Try to create and return a path corresponding to the requirements of
 /// this builder.
-#[instrument(skip_all, level = "trace")]
 fn pick_path<'a, B: AnonymousPathBuilder, R: Rng, RT: Runtime>(
     builder: &B,
     rng: &mut R,
@@ -402,7 +400,6 @@ fn ensure_unique_hops<'a>(hops: &'a [MaybeOwnedRelay<'a>]) -> StdResult<(), Bug>
 
 /// Try to select a guard corresponding to the requirements of
 /// this builder.
-#[instrument(skip_all, level = "trace")]
 fn select_guard<'a, RT: Runtime>(
     netdir: &'a NetDir,
     guardmgr: &GuardMgr<RT>,
